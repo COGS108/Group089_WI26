@@ -188,3 +188,6 @@ data/*.sq*
 data/*/*.sq*
 data/*.SQ*
 data/*/*.SQ*
+
+# exclude toy notebooks
+modules/toy.ipynb
