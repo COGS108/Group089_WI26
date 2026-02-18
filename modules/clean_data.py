@@ -90,28 +90,3 @@ def add_airing_date_features(df: pd.DataFrame, ref_date="2026-02-01") -> pd.Data
     out.loc[mask_curr, "end_year"] = ref_ts.year  # optional but usually convenient
 
     return out
-
-def convert_duration_to_timedelta(df, col='duration'):
-    """
-    Converts a column containing seconds into pandas Timedelta objects.
-    """
-    if col not in df.columns:
-        raise ValueError(f"Column '{col}' not found in DataFrame.")
-    
-    df_out = df.copy()
-    df_out[col] = pd.to_timedelta(pd.to_numeric(df_out[col], errors='coerce'), unit='s')
-    return df_out
-
-def filter_short_duration(df, threshold_minutes=10):
-    """
-    Filters out rows where the duration is shorter than a specified threshold.
-    """
-    if 'duration' not in df.columns:
-        raise ValueError(f"The dataframe is missing duration")
-
-    df_out = df.copy()
-
-    threshold = pd.to_timedelta(threshold_minutes, unit='m')
-    df_out = df_out[df_out['duration'] >= threshold]
-    
-    return df_out
