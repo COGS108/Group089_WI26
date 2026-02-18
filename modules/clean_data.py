@@ -1,9 +1,11 @@
 import pandas as pd
+import numpy as np
 
 
 # CONFIGS
 USEFUL_COLS = ['anime_id', 'title', 'type', 'episodes', 
-               'duration', 'genres', 'start_date', 'end_date']
+               'duration', 'genres', 'start_date', 'end_date',
+               'status']
 SHOUNEN_TAG = 'Shounen'
 SLICE_OF_LIFE_TAG = 'Slice of Life'
 BINARY_CATEGORY_PREFIX = 'is_'
@@ -60,7 +62,56 @@ def filter_multicategory_anime(df, tags_to_check):
     df_out = df[matches_count <= 1].copy()
     return df_out
 
+def add_airing_date_features(df: pd.DataFrame, ref_date="2026-02-01") -> pd.DataFrame:
+    # Adds start_year, end_year, aired_days.
+    # For status == 'currently_airing', aired_days is computed up to ref_date (inclusive).
+    out = df.copy()
 
-# sample function
-def add(a, b):
-    return a+b
+    out["start_date"] = pd.to_datetime(out["start_date"], errors="coerce")
+    out["end_date"]   = pd.to_datetime(out["end_date"],   errors="coerce")
+
+    out["start_year"] = out["start_date"].dt.year
+    out["end_year"]   = out["end_date"].dt.year
+
+    bad_range = out["start_date"].notna() & out["end_date"].notna() & (out["end_date"] < out["start_date"])
+    out.loc[bad_range, ["start_date", "end_date"]] = pd.NaT
+    out.loc[bad_range, ["start_year", "end_year"]] = np.nan
+
+    out["aired_days"] = np.where(
+        out["start_date"].notna() & out["end_date"].notna(),
+        (out["end_date"] - out["start_date"]).dt.days + 1,
+        np.nan
+    )
+
+    ref_ts = pd.Timestamp(ref_date)
+    mask_curr = (out["status"] == "currently_airing") & out["start_date"].notna()
+    days_to_ref = (ref_ts - out.loc[mask_curr, "start_date"]).dt.days + 1
+    out.loc[mask_curr, "aired_days"] = days_to_ref.clip(lower=1)
+    out.loc[mask_curr, "end_year"] = ref_ts.year  # optional but usually convenient
+
+    return out
+
+def convert_duration_to_timedelta(df, col='duration'):
+    """
+    Converts a column containing seconds into pandas Timedelta objects.
+    """
+    if col not in df.columns:
+        raise ValueError(f"Column '{col}' not found in DataFrame.")
+    
+    df_out = df.copy()
+    df_out[col] = pd.to_timedelta(pd.to_numeric(df_out[col], errors='coerce'), unit='s')
+    return df_out
+
+def filter_short_duration(df, threshold_minutes=10):
+    """
+    Filters out rows where the duration is shorter than a specified threshold.
+    """
+    if 'duration' not in df.columns:
+        raise ValueError(f"The dataframe is missing duration")
+
+    df_out = df.copy()
+
+    threshold = pd.to_timedelta(threshold_minutes, unit='m')
+    df_out = df_out[df_out['duration'] >= threshold]
+    
+    return df_out
