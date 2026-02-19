@@ -90,3 +90,8 @@ def add_airing_date_features(df: pd.DataFrame, ref_date="2026-02-01") -> pd.Data
     out.loc[mask_curr, "end_year"] = ref_ts.year  # optional but usually convenient
 
     return out
+
+def seconds_to_mins(df, duration_column):
+    # Given duration column containing int representing seconds, convert from seconds to min rounded to integer
+    df[duration_column] = (df[duration_column] / 60).round().astype(int)
+    return df
